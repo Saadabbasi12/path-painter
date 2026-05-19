@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import LEVELS from "../levels/LevelData.js";
 import SaveManager from "../managers/SaveManager.js";
 import SoundManager from "../managers/SoundManager.js";
+import YT from "../managers/YouTubeSDK.js";
 
 const STATE = { DRAWING: "drawing", RUNNING: "running", DEAD: "dead", WIN: "win" };
 
@@ -1612,7 +1613,7 @@ _updateUI() {
     }
   }
 
-  _win() {
+  async _win() {
     if (this.state === STATE.WIN) return;
     this.state = STATE.WIN;
     SoundManager.play('win');
@@ -1623,7 +1624,8 @@ _updateUI() {
     if (this.coinsCollected >= Math.ceil(total / 2)) stars = 2;
     if (this.coinsCollected === total && paintPct >= 0.2) stars = 3;
 
-    SaveManager.setStars(this.levelId, stars);
+    await SaveManager.setStars(this.levelId, stars);
+    YT.sendScore(SaveManager.getTotalStars());
     this._winParticles();
 
     this.time.delayedCall(600, () => {

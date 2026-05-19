@@ -2,16 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Path Painter</title>
+  <!--
+    CRITICAL: Do NOT use maximum-scale=1.0 or user-scalable=no on the viewport
+    meta — some YouTube WebView configurations treat this as a hint to defer
+    rendering. Keep the viewport simple.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rabbit Path Painter</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a0a2e; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0600; }
+    #game { width: 100%; height: 100%; }
     canvas { display: block; touch-action: none; }
   </style>
-  <script type="module" crossorigin src="/assets/index-BUBzwXPq.js"></script>
+
+  <!--
+    YOUTUBE PLAYABLES — SDK MUST BE FIRST.
+
+    Rules (unchanged — these are correct):
+    1. NO defer, NO async, NO type="module" on this tag.
+       Executes synchronously so `ytgame` is defined before ANY other script.
+    2. type="module" scripts are ALWAYS deferred — a plain sync <script> in
+       <head> always executes before them. This ordering is guaranteed.
+    3. Do NOT move or add defer/async to this tag.
+  -->
+  <script src="https://www.youtube.com/game_api/v1"></script>
+  <script type="module" crossorigin src="/assets/index-Dxq_WwBf.js"></script>
 </head>
 <body>
   <div id="game"></div>
+
+  <!--
+    Game entry point. type="module" is implicitly deferred — runs after the
+    synchronous SDK <script> above has set up `ytgame`.
+    Vite replaces this src path on `npm run build`.
+  -->
 </body>
 </html>

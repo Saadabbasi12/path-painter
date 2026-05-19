@@ -1,24 +1,21 @@
 /**
- * SoundManager — Procedural audio via Web Audio API.
+ * SoundManager.js  —  YouTube Playables edition
  *
- * Facebook Instant Games compliance:
- *  ✅ Zero audio files (no .ogg/.mp3/.wav assets to bundle)
- *  ✅ No external CDN or API calls
- *  ✅ All scheduling via AudioContext.currentTime (no setTimeout for timing)
- *  ✅ Noise buffers pre-baked once at init — no per-call Float32Array allocation
- *  ✅ AudioContext suspended when tab/app is hidden (battery / FB policy)
- *  ✅ AudioContext resumed on first pointer interaction (autoplay policy)
- *  ✅ Full try/catch guard on every public call — never throws to caller
- *  ✅ Works on Web Audio API v1 (Chrome 57+, Android 5+ WebView)
- *  ✅ No webkitAudioContext node types used (deprecated in Android Chrome)
+ * Changes from original:
+ *  ❌ Removed: document.addEventListener('visibilitychange') — FORBIDDEN on YouTube.
+ *     YouTube Playables must use ONLY ytgame.system.onPause / onResume for
+ *     pause detection. The visibilitychange handler has been removed.
+ *     Audio muting on pause is now handled by BootScene via YT.onPause/onResume.
  *
- * Usage:
- *   import SoundManager from '../managers/SoundManager.js';
- *   SoundManager.init();          // call once on app start or first scene
- *   SoundManager.play('collect');
- *   SoundManager.setMuted(true);
- *   SoundManager.toggle();        // returns new muted state (bool)
- *   SoundManager.setVolume(0.8);  // 0–1
+ *  ❌ Removed: click/pointerdown auto-resume for AudioContext.
+ *     YouTube can give the game focus automatically without a user click,
+ *     so we must be ready to play (or be silent) without waiting for a tap.
+ *     AudioContext resume is now triggered by YT.onResume in BootScene instead.
+ *
+ *  ✅ Added: resumeContext() public method so BootScene can resume from
+ *     YT.onResume without depending on a user click.
+ *
+ * Everything else (procedural audio, noise buffers, pink noise, etc.) unchanged.
  */
 
 const SoundManager = (() => {
@@ -29,43 +26,32 @@ const SoundManager = (() => {
   let muted       = false;
   let _ready      = false;
 
-  /**
-   * Pre-baked noise buffers keyed by duration string.
-   * Generated ONCE at init so _noise() never allocates on the audio thread.
-   * Low-end Android benefit: no GC pressure during gameplay.
-   */
   const _noiseCache = {};
 
   // ── Init ──────────────────────────────────────────────────────
   function init() {
     if (_ready) return;
     try {
-      // webkitAudioContext constructor is fine; we avoid deprecated *node* APIs.
       ctx = new (window.AudioContext || window.webkitAudioContext)();
 
       masterGain = ctx.createGain();
       masterGain.gain.value = 0.55;
       masterGain.connect(ctx.destination);
 
-      // Pre-bake all noise buffers used by the sound catalog.
-      // Durations (seconds) that _noise() is called with:
       [0.04, 0.06, 0.08, 0.10, 0.12, 0.15, 0.20, 0.25].forEach(_prebakeNoise);
 
-      // Autoplay policy: resume on first pointer event.
-      const _resume = () => {
-        if (ctx && ctx.state === 'suspended') ctx.resume();
-        document.removeEventListener('pointerdown', _resume, true);
-        document.removeEventListener('touchstart',  _resume, true);
-      };
-      document.addEventListener('pointerdown', _resume, true);
-      document.addEventListener('touchstart',  _resume, true);
+      // NOTE: No visibilitychange listener here — YouTube Playables forbids it.
+      // Audio pause/resume is handled exclusively via YT.onPause / YT.onResume
+      // in BootScene, which calls SoundManager.setMuted() accordingly.
 
-      // Battery / FB policy: suspend while hidden, resume on return.
-      document.addEventListener('visibilitychange', () => {
-        if (!ctx) return;
-        if (document.hidden) ctx.suspend();
-        else                  ctx.resume();
-      });
+      // Still attempt to resume AudioContext on first pointer interaction as a
+      // browser autoplay policy fallback (this is fine — we're not using it
+      // as a substitute for SDK pause detection, just for AudioContext state).
+      const _resumeCtx = () => {
+        if (ctx && ctx.state === 'suspended') ctx.resume();
+      };
+      document.addEventListener('pointerdown', _resumeCtx, { once: true });
+      document.addEventListener('touchstart',  _resumeCtx, { once: true });
 
       _ready = true;
     } catch (e) {
@@ -81,7 +67,6 @@ const SoundManager = (() => {
     const len    = Math.ceil(ctx.sampleRate * duration);
     const buf    = ctx.createBuffer(1, len, ctx.sampleRate);
     const data   = buf.getChannelData(0);
-    // Pink-ish noise (Paul Kellet approximation) — sounds more natural than white
     let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
     for (let i = 0; i < len; i++) {
       const w  = Math.random() * 2 - 1;
@@ -98,8 +83,6 @@ const SoundManager = (() => {
   }
 
   // ── Low-level audio primitives ────────────────────────────────
-
-  /** Route a node through an envelope gain to masterGain and auto-stop. */
   function _route(node, vol, startT, endT) {
     const g = ctx.createGain();
     g.gain.setValueAtTime(vol,   startT);
@@ -109,17 +92,6 @@ const SoundManager = (() => {
     return g;
   }
 
-  /**
-   * Schedule a single oscillator.
-   * All timing uses ctx.currentTime — no setTimeout.
-   *
-   * @param {string}  type     OscillatorType
-   * @param {number}  freq     Start frequency (Hz)
-   * @param {number}  dur      Duration (s)
-   * @param {number}  vol      Peak gain
-   * @param {number}  freqEnd  End frequency for ramp (optional)
-   * @param {number}  delay    Seconds from now to start (default 0)
-   */
   function _osc(type, freq, dur, vol, freqEnd, delay) {
     vol   = vol   !== undefined ? vol   : 0.3;
     delay = delay !== undefined ? delay : 0;
@@ -136,21 +108,13 @@ const SoundManager = (() => {
     o.stop(t1 + 0.05);
   }
 
-  /**
-   * Play a pre-baked noise buffer through a highpass filter.
-   *
-   * @param {number} duration  Must match a pre-baked key (see init)
-   * @param {number} vol
-   * @param {number} highpass  Filter cutoff Hz
-   * @param {number} delay     Seconds from now
-   */
   function _noise(duration, vol, highpass, delay) {
     vol      = vol      !== undefined ? vol      : 0.12;
     highpass = highpass !== undefined ? highpass : 400;
     delay    = delay    !== undefined ? delay    : 0;
     const key = duration.toFixed(3);
     const buf = _noiseCache[key];
-    if (!buf) return; // not pre-baked — skip rather than allocate
+    if (!buf) return;
 
     const t0  = ctx.currentTime + delay;
     const t1  = t0 + duration;
@@ -167,7 +131,6 @@ const SoundManager = (() => {
     src.stop(t1 + 0.05);
   }
 
-  // ── Guard: skip if not ready or muted ────────────────────────
   function _canPlay() {
     if (!_ready || muted) return false;
     if (ctx.state === 'suspended') { ctx.resume(); }
@@ -176,41 +139,34 @@ const SoundManager = (() => {
 
   // ── Sound catalog ─────────────────────────────────────────────
   const sounds = {
-
     draw() {
       _noise(0.06, 0.07, 800);
       _osc('sawtooth', 180 + Math.random()*40, 0.06, 0.04, 120);
     },
-
     run() {
       _osc('triangle', 320, 0.18, 0.12, 180);
       _noise(0.10, 0.08, 600);
     },
-
     step() {
       _noise(0.04, 0.05, 1200);
     },
-
     collect() {
       _osc('sine', 880,  0.08, 0.22, null, 0);
       _osc('sine', 1320, 0.10, 0.18, null, 0.06);
       _osc('sine', 1760, 0.08, 0.14, null, 0.12);
       _noise(0.06, 0.09, 900);
     },
-
     gate() {
       _noise(0.12, 0.10, 300);
       _osc('square', 220, 0.05, 0.14, null, 0);
       _osc('square', 330, 0.06, 0.10, null, 0.04);
       _osc('sine',   550, 0.22, 0.10, 440,  0.08);
     },
-
     die() {
       _osc('sawtooth', 440, 0.35, 0.28, 55);
       _noise(0.25, 0.22, 200);
       _osc('sine', 80, 0.30, 0.40, 40, 0.05);
     },
-
     win() {
       const notes = [523, 659, 784, 1047];
       notes.forEach(function(freq, i) {
@@ -220,27 +176,22 @@ const SoundManager = (() => {
       });
       _noise(0.15, 0.08, 500, 0.05);
     },
-
     outOfPaint() {
       _osc('sawtooth', 200, 0.22, 0.22, 80);
       _noise(0.15, 0.10, 400);
     },
-
     hover() {
       _osc('sine', 660, 0.06, 0.06);
     },
-
     click() {
       _osc('sine', 440, 0.04, 0.14, null, 0);
       _osc('sine', 660, 0.05, 0.10, null, 0.03);
     },
-
     levelSelect() {
       _noise(0.06, 0.06, 700);
       _osc('triangle', 392, 0.06, 0.16, null, 0);
       _osc('triangle', 523, 0.07, 0.13, null, 0.05);
     },
-
     ambientStart() {
       const t0  = ctx.currentTime;
       const dur = 5.0;
@@ -296,6 +247,14 @@ const SoundManager = (() => {
 
     setVolume(v) {
       if (masterGain) masterGain.gain.value = Math.max(0, Math.min(1, v));
+    },
+
+    /**
+     * Resume the AudioContext. Called by BootScene from YT.onResume
+     * so audio restores correctly after the game is un-paused by YouTube.
+     */
+    resumeContext() {
+      if (ctx && ctx.state === 'suspended') ctx.resume();
     },
   };
 })();
