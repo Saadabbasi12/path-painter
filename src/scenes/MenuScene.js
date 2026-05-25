@@ -212,132 +212,137 @@ export default class MenuScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════
   // BACKGROUND
   // ═══════════════════════════════════════════════
-  _drawBackground(W, H) {
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x1e0d00, 0x1e0d00, 0x050200, 0x050200, 1);
-    bg.fillRect(0, 0, W, H);
+ // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// ULTRA CLEAN BACKGROUND
+// ═══════════════════════════════════════════════
+_drawBackground(W, H) {
+  // CLEAN DARK BACKGROUND
+  const bg = this.add.graphics();
 
-    const warmFill = this.add.ellipse(
-      W / 2, H * 0.72,
-      W * 0.9, H * 0.55,
-      0xff8c30, 0.07
+  bg.fillGradientStyle(
+    0x140900,
+    0x140900,
+    0x070300,
+    0x070300,
+    1
+  );
+
+  bg.fillRect(0, 0, W, H);
+
+  // SMALL STARS
+  for (let i = 0; i < 45; i++) {
+    const star = this.add.circle(
+      Math.random() * W,
+      Math.random() * H * 0.7,
+      Phaser.Math.FloatBetween(0.6, 1.5),
+      0xfff6e8,
+      Phaser.Math.FloatBetween(0.18, 0.45)
     );
-    warmFill.setDepth(1);
 
-    const hillColors = [0x100600, 0x180b00, 0x200f00, 0x281400, 0x301a00];
-    for (let i = 0; i < 5; i++) {
-      const hill = this.add.graphics();
-      hill.setDepth(3 + i);
-      hill.fillStyle(hillColors[i], 1);
-      const baseY = H * (0.68 + i * 0.065);
-      hill.beginPath();
-      hill.moveTo(0, H);
-      for (let x = 0; x <= W + 120; x += 60) {
-        const yy = baseY
-          + Math.sin(x * 0.012 + i * 1.3) * 22
-          + Math.cos(x * 0.023 + i * 0.7) * 14;
-        hill.lineTo(x, yy);
-      }
-      hill.lineTo(W, H);
-      hill.closePath();
-      hill.fillPath();
-    }
+    star.setDepth(2);
 
-    for (let i = 0; i < 45; i++) {
-      const tree = this.add.graphics();
-      const tx = Math.random() * W;
-      const ty = H * (0.55 + Math.random() * 0.3);
-      const s  = 0.3 + Math.random() * 0.7;
-      tree.fillStyle(Phaser.Math.RND.pick([0x1a3a10, 0x142e0a, 0x204015]), 1);
-      tree.fillTriangle(
-        tx, ty - 28 * s,
-        tx - 19 * s, ty + 10 * s,
-        tx + 19 * s, ty - 10 * s
-      );
-      tree.setDepth(11);
-    }
-
-    for (let i = 0; i < 55; i++) {
-      const star = this.add.circle(
-        Math.random() * W,
-        Math.random() * H * 0.58,
-        Phaser.Math.FloatBetween(0.6, 1.8),
-        0xfff8e8,
-        Phaser.Math.FloatBetween(0.15, 0.55)
-      );
-      star.setDepth(2);
-      this.tweens.add({
-        targets: star,
-        alpha: Phaser.Math.FloatBetween(0.02, 0.12),
-        duration: Phaser.Math.Between(2500, 6000),
-        yoyo: true, repeat: -1,
-        delay: Math.random() * 4000,
-      });
-    }
-
-    for (let i = 0; i < 28; i++) {
-      const ff = this.add.circle(
-        Math.random() * W,
-        H * 0.45 + Math.random() * H * 0.55,
-        Phaser.Math.FloatBetween(1.5, 3.5),
-        Phaser.Math.RND.pick([0xffe060, 0xfff3a0, 0xffc840]),
-        Phaser.Math.FloatBetween(0.2, 0.65)
-      );
-      ff.setDepth(19);
-      this.tweens.add({
-        targets: ff,
-        y: ff.y - Phaser.Math.Between(18, 55),
-        x: ff.x + Phaser.Math.Between(-22, 22),
-        alpha: 0.03,
-        duration: Phaser.Math.Between(2800, 6500),
-        yoyo: true, repeat: -1,
-        delay: Math.random() * 4000,
-      });
-    }
-
-    for (let i = 0; i < 40; i++) {
-      const d = this.add.circle(
-        Math.random() * W,
-        Math.random() * H,
-        Phaser.Math.FloatBetween(0.5, 1.8),
-        0xffffff,
-        Phaser.Math.FloatBetween(0.04, 0.12)
-      );
-      d.setDepth(18);
-      this.tweens.add({
-        targets: d,
-        y: d.y - 28,
-        alpha: 0,
-        duration: 3500 + Math.random() * 3000,
-        repeat: -1,
-        delay: Math.random() * 5000,
-      });
-    }
+    this.tweens.add({
+      targets: star,
+      alpha: Phaser.Math.FloatBetween(0.05, 0.12),
+      duration: Phaser.Math.Between(2500, 5500),
+      yoyo: true,
+      repeat: -1,
+      delay: Math.random() * 3000
+    });
   }
 
-  // ═══════════════════════════════════════════════
+  // FLOATING PREMIUM PARTICLES
+  for (let i = 0; i < 18; i++) {
+    const p = this.add.circle(
+      Math.random() * W,
+      Math.random() * H,
+      Phaser.Math.FloatBetween(1.5, 3),
+      Phaser.Math.RND.pick([
+        0xffd76a,
+        0xffefb0,
+        0xffc84d
+      ]),
+      Phaser.Math.FloatBetween(0.12, 0.32)
+    );
+
+    p.setDepth(5);
+
+    this.tweens.add({
+      targets: p,
+      y: p.y - Phaser.Math.Between(20, 45),
+      x: p.x + Phaser.Math.Between(-10, 10),
+      alpha: 0.02,
+      duration: Phaser.Math.Between(3500, 6500),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      delay: Math.random() * 3000
+    });
+  }
+}
   // PANEL
   // ═══════════════════════════════════════════════
-  _drawPanel(cx, cy, pw, ph, ui) {
-    const glow = this.add.ellipse(cx, cy, pw * 1.05, ph * 1.6, 0xff9930, 0.07);
-    glow.setDepth(9);
+ // ═══════════════════════════════════════════════
+// CLEAN PANEL
+// ═══════════════════════════════════════════════
+_drawPanel(cx, cy, pw, ph, ui) {
+  const panel = this.add.graphics();
 
-    const shadow = this.add.graphics();
-    shadow.setDepth(10);
-    shadow.fillStyle(0x000000, 0.4);
-    shadow.fillRoundedRect(cx - pw / 2 + 4, cy - ph / 2 + 6, pw, ph, 20);
+  panel.setDepth(11);
 
-    const panel = this.add.graphics();
-    panel.setDepth(11);
-    panel.fillGradientStyle(0x3e1e04, 0x3e1e04, 0x1c0c00, 0x1c0c00, 1);
-    panel.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 20);
+  // MAIN PANEL
+  panel.fillGradientStyle(
+    0x2a1403,
+    0x2a1403,
+    0x140800,
+    0x140800,
+    1
+  );
 
-    panel.fillGradientStyle(0xffd080, 0xffd080, 0xffd080, 0xffd080, 0.06, 0.06, 0, 0);
-    panel.fillRoundedRect(cx - pw / 2 + 2, cy - ph / 2 + 2, pw - 4, ph / 3, 18);
+  panel.fillRoundedRect(
+    cx - pw / 2,
+    cy - ph / 2,
+    pw,
+    ph,
+    20
+  );
 
-    panel.lineStyle(Math.ceil(1.5 * ui), 0xd4883a, 0.75);
-    panel.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 20);
-  }
+  // TOP SHINE
+  panel.fillGradientStyle(
+    0xffffff,
+    0xffffff,
+    0xffffff,
+    0xffffff,
+    0.05,
+    0.05,
+    0,
+    0
+  );
+
+  panel.fillRoundedRect(
+    cx - pw / 2 + 3,
+    cy - ph / 2 + 3,
+    pw - 6,
+    ph * 0.32,
+    18
+  );
+
+  // BORDER
+  panel.lineStyle(
+    Math.ceil(1.5 * ui),
+    0xd79a4a,
+    0.65
+  );
+
+  panel.strokeRoundedRect(
+    cx - pw / 2,
+    cy - ph / 2,
+    pw,
+    ph,
+    20
+  );
+}
 
   // ═══════════════════════════════════════════════
   // PREMIUM BUTTON
@@ -348,9 +353,6 @@ export default class MenuScene extends Phaser.Scene {
     const fontSize = big
       ? Phaser.Math.Clamp(22 * ui, 16, 28)
       : Phaser.Math.Clamp(17 * ui, 13, 22);
-
-    const glow = this.add.ellipse(cx, cy, bw * 0.88, bh * 2.0, colors.base, 0.18);
-    glow.setDepth(14);
 
     const shadow = this.add.graphics();
     shadow.setDepth(15);
@@ -427,11 +429,11 @@ export default class MenuScene extends Phaser.Scene {
     const g = this.add.graphics();
     g.setDepth(15);
 
-    g.fillStyle(0x000000, 0.16);
-    g.fillEllipse(x, y + 108 * scale, 112 * scale, 22 * scale);
+    // g.fillStyle(0x000000, 0.16);
+    // g.fillEllipse(x, y + 108 * scale, 112 * scale, 22 * scale);
 
-    const glow = this.add.circle(x, y + 12 * scale, 105 * scale, 0xffaa40, 0.11);
-    glow.setDepth(10);
+    // const glow = this.add.circle(x, y + 12 * scale, 105 * scale, 0xffaa40, 0.11);
+    // glow.setDepth(10);
 
     g.fillStyle(0xf6fcff, 1);
     g.fillEllipse(x - 34 * scale, y - 70 * scale, 40 * scale, 114 * scale);
@@ -484,7 +486,7 @@ export default class MenuScene extends Phaser.Scene {
     g.fillEllipse(x + 72 * scale, y + 50 * scale, 28 * scale, 13 * scale);
 
     this.tweens.add({
-      targets: [g, glow],
+       targets: g,
       y: "+=7",
       duration: 1900,
       yoyo: true, repeat: -1,
